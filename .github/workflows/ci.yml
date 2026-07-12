@@ -22,3 +22,8 @@ jobs:
       # type-check && lint && test && build
       - name: Verify
         run: npm run verify
+
+      # E2E: drive the built prod server over HTTP. Relies on Verify's
+      # `astro build` having produced dist/server/entry.mjs.
+      - name: E2E tests
+        run: npm run test:e2e

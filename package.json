@@ -16,6 +16,7 @@
     "check": "astro check",
     "lint": "oxlint src tests",
     "test": "vitest run",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "verify": "astro check && npm run lint && vitest run && astro build",
     "astro": "astro"
   },
