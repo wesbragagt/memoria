@@ -30,6 +30,13 @@ runtime**:
 If your docs live next to your code and change often, this removes every step
 between "I noticed a mistake" and "it's fixed for everyone."
 
+| | |
+| --- | --- |
+| ![Home — nav tree, recently updated, favorites](.github/screenshots/home.png) | ![⌘K palette with live search results](.github/screenshots/palette.png) |
+| *Home: nav tree, recently updated, search* | *⌘K palette with live results* |
+| ![Doc page in dark mode](.github/screenshots/dark.png) | |
+| *Dark mode (pre-paint, no flash)* | |
+
 ## Get started
 
 ```bash
