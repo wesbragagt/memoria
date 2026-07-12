@@ -1,4 +1,4 @@
-# Live Data Embeds
+# Embed live data
 
 Docs can embed live query results with no code change — just authored markup.
 Add a `data-sql-table` container with an inline SQL query. The client island
@@ -19,16 +19,9 @@ never errors.
   </script>
 </div>
 
-Queries must be a single read-only statement starting with `SELECT` or `WITH`;
-results are capped server-side. One failing embed never blocks another:
+## Rules
 
-<div data-sql-table data-title="Top products (CTE)">
-  <script type="text/plain" data-sql>
-    WITH ranked AS (
-      SELECT product, SUM(qty) AS units
-      FROM order_items
-      GROUP BY product
-    )
-    SELECT product, units FROM ranked ORDER BY units DESC LIMIT 5
-  </script>
-</div>
+- Queries must be a single `SELECT` (or `WITH … SELECT`) statement.
+- Results are row-capped and time-capped server-side.
+- This page is `.mdx` because embeds need raw HTML — see the
+  [authoring formats reference](../reference/authoring-formats.md).
