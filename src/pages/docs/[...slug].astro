@@ -1,0 +1,185 @@
+---
+// Live-SSR doc route. Fresh read + render every request; no caching.
+// Dispatch by format; standalone HTML bypasses the layout entirely by
+// returning a raw text/html Response.
+import Base from "../../layouts/Base.astro";
+import Tree from "../../components/Tree.astro";
+import { getDoc, listDocs, buildTree } from "../../domain/docs";
+import { renderMarkdown, type TocEntry } from "../../render/render";
+
+const slug = Astro.params.slug ?? "";
+
+const doc = await getDoc(slug);
+if (!doc) {
+  return new Response("Not found", { status: 404 });
+}
+
+// Standalone HTML: return the body verbatim as the full response — its own
+// <head>, no site chrome.
+if (doc.format === "html" && doc.standalone) {
+  return new Response(doc.body, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
+// Everything else renders inside the layout. Fetch the full doc list once for
+// link rewriting (knownSlugs) and the sidebar tree.
+const docs = await listDocs();
+const knownSlugs = new Set(docs.map((d) => d.slug));
+const tree = buildTree(docs, doc.slug);
+
+let contentHtml: string;
+let toc: TocEntry[] = [];
+
+if (doc.format === "html") {
+  // Non-standalone HTML: inject the body as a fragment, no markdown pipeline.
+  contentHtml = doc.body;
+} else {
+  const rendered = await renderMarkdown(doc.body, {
+    slug: doc.slug,
+    allowHtml: doc.format === "mdx",
+    knownSlugs,
+  });
+  contentHtml = rendered.html;
+  toc = rendered.toc;
+}
+
+// Breadcrumbs from slug segments: folder ancestors (no page → not linked),
+// current doc title last.
+const segments = doc.slug.split("/");
+const folderCrumbs = segments.slice(0, -1);
+---
+
+<Base title={doc.title}>
+  <Tree slot="tree" nodes={tree} />
+  <script is:inline define:vars={{ slug: doc.slug, title: doc.title }}>
+    document.body.setAttribute("data-doc-slug", slug);
+    document.body.setAttribute("data-doc-title", title);
+  </script>
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    {
+      folderCrumbs.map((name) => (
+        <>
+          <span class="sep">/</span>
+          <span class="crumb">{name}</span>
+        </>
+      ))
+    }
+    <span class="sep">/</span>
+    <span class="crumb current">{doc.title}</span>
+    <button
+      id="fav-button"
+      class="fav-btn"
+      aria-label="Toggle favorite"
+      aria-pressed="false"
+      type="button"
+    >
+      ☆
+    </button>
+  </nav>
+
+  <div class="doc">
+    <article class="doc-body" set:html={contentHtml} />
+    {
+      toc.length > 0 && (
+        <aside class="toc" aria-label="On this page">
+          <p class="toc-title">On this page</p>
+          <ul>
+            {toc.map((entry) => (
+              <li class:list={[`depth-${entry.depth}`]}>
+                <a href={`#${entry.id}`}>{entry.text}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )
+    }
+  </div>
+  <script>
+    import "../../client/islands";
+  </script>
+</Base>
+
+<style>
+  .breadcrumbs {
+    font-size: 0.85rem;
+    color: var(--muted, #666);
+    margin-bottom: 1rem;
+  }
+  .breadcrumbs a {
+    text-decoration: none;
+  }
+  .breadcrumbs .sep {
+    margin: 0 0.4rem;
+    opacity: 0.5;
+  }
+  .breadcrumbs .current {
+    color: inherit;
+    font-weight: 600;
+  }
+  .fav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+    margin-left: 0.5rem;
+    color: inherit;
+    vertical-align: baseline;
+  }
+  .fav-btn:hover {
+    opacity: 0.7;
+  }
+  .doc {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 2rem;
+    align-items: start;
+  }
+  .doc-body {
+    min-width: 0;
+  }
+  .toc {
+    position: sticky;
+    top: 1.5rem;
+    font-size: 0.85rem;
+  }
+  .toc-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.72rem;
+    color: var(--muted, #666);
+    margin: 0 0 0.5rem;
+  }
+  .toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    line-height: 1.7;
+  }
+  .toc .depth-3 {
+    padding-left: 0.8rem;
+  }
+  .toc a {
+    color: var(--muted, #666);
+    text-decoration: none;
+  }
+  .toc a:hover {
+    color: inherit;
+  }
+  .toc a.active {
+    color: var(--fg, inherit);
+    font-weight: 600;
+  }
+  @media (max-width: 800px) {
+    .doc {
+      grid-template-columns: 1fr;
+    }
+    .toc {
+      display: none;
+    }
+  }
+</style>

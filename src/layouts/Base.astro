@@ -1,0 +1,605 @@
+---
+// Shell for non-standalone docs and the home page. Provides the site chrome:
+// header (home link, search button, theme toggle), sticky tree sidebar, content
+// area, and the command palette. Theme is applied pre-paint via an is:inline
+// head script; the rest of the client behaviour lives in src/client/main.ts.
+// Sidebar tree is passed as pre-rendered markup via the `tree` slot.
+import ChatModal from "../components/ChatModal";
+import { isConfigured as chatConfigured } from "../adapters/chat-agent";
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+
+// Ask-the-docs chat is optional: read configured-ness server-side (the API key
+// is read only in the server adapter) so we can omit the trigger + island
+// entirely when unconfigured — no client probe, no bundle exposure.
+const chatOn = chatConfigured();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {/* Pre-paint theme: runs before any style/content so there is no flash.
+        docs.theme = "light"|"dark" overrides; absent follows OS preference. */}
+    <script is:inline>
+      (function () {
+        try {
+          var t = localStorage.getItem("docs.theme");
+          if (t !== "light" && t !== "dark") {
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">memoria</a>
+      <div class="header-actions">
+        <button type="button" class="search-trigger" data-palette-open>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <button
+          type="button"
+          class="theme-toggle"
+          data-theme-toggle
+          aria-label="Toggle theme"
+          aria-pressed="false"
+        >
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>
+        </button>
+        {chatOn && <ChatModal client:only="react" />}
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <nav aria-label="Docs navigation">
+          <slot name="tree" />
+        </nav>
+      </aside>
+      <main class="content">
+        <slot />
+      </main>
+    </div>
+
+    {/* Command palette. Hidden until opened by main.ts. */}
+    <div class="palette-overlay" data-palette hidden>
+      <div
+        class="palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search documentation"
+      >
+        <div class="palette-search">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <input
+            type="text"
+            class="palette-input"
+            data-palette-input
+            placeholder="Search docs…"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-listbox"
+            aria-autocomplete="list"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <kbd>Esc</kbd>
+        </div>
+        <ul
+          id="palette-listbox"
+          class="palette-list"
+          role="listbox"
+          data-palette-list
+          aria-label="Search results"
+        >
+        </ul>
+        <div class="palette-status" data-palette-status aria-live="polite"></div>
+      </div>
+    </div>
+
+    <script>
+      import "../client/main.ts";
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  :root,
+  :root[data-theme="light"] {
+    --bg: #ffffff;
+    --bg-subtle: #f6f8fa;
+    --bg-elevated: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #656d76;
+    --link: #2563eb;
+    --border: #e5e7eb;
+    --hover: #f0f2f5;
+    --active: #e0e7ff;
+    --active-fg: #1e3a8a;
+    --overlay: rgba(15, 23, 42, 0.35);
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+
+    /* Callout accents (icon/border tint; label text carries the meaning). */
+    --callout-note: #2563eb;
+    --callout-tip: #16a34a;
+    --callout-important: #7c3aed;
+    --callout-warning: #d97706;
+    --callout-caution: #dc2626;
+
+    /* highlight.js palette wired to theme variables (no runtime CSS fetch). */
+    --hl-comment: #6a737d;
+    --hl-keyword: #d73a49;
+    --hl-string: #032f62;
+    --hl-number: #005cc5;
+    --hl-function: #6f42c1;
+    --hl-title: #6f42c1;
+    --hl-type: #22863a;
+    --hl-attr: #005cc5;
+    --hl-symbol: #e36209;
+    --hl-builtin: #005cc5;
+    --hl-deletion: #b31d28;
+    --hl-addition: #22863a;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d1117;
+    --bg-subtle: #161b22;
+    --bg-elevated: #161b22;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --link: #58a6ff;
+    --border: #30363d;
+    --hover: #1c2129;
+    --active: #1f2d4d;
+    --active-fg: #cdd9ff;
+    --overlay: rgba(1, 4, 9, 0.7);
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+    --callout-note: #58a6ff;
+    --callout-tip: #3fb950;
+    --callout-important: #bc8cff;
+    --callout-warning: #d29922;
+    --callout-caution: #f85149;
+
+    --hl-comment: #8b949e;
+    --hl-keyword: #ff7b72;
+    --hl-string: #a5d6ff;
+    --hl-number: #79c0ff;
+    --hl-function: #d2a8ff;
+    --hl-title: #d2a8ff;
+    --hl-type: #7ee787;
+    --hl-attr: #79c0ff;
+    --hl-symbol: #ffa657;
+    --hl-builtin: #79c0ff;
+    --hl-deletion: #ffdcd7;
+    --hl-addition: #aff5b4;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    background: var(--bg);
+  }
+  body {
+    margin: 0;
+    font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  a {
+    color: var(--link);
+  }
+
+  /* Header ------------------------------------------------------------- */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 1.25rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .site-header .brand {
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-decoration: none;
+    color: var(--fg);
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .search-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .search-trigger:hover {
+    background: var(--hover);
+  }
+  .search-trigger kbd {
+    font-family: inherit;
+    font-size: 0.72rem;
+    padding: 0.05rem 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+  }
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    color: var(--fg);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .theme-toggle:hover {
+    background: var(--hover);
+  }
+  /* Show the icon for the theme you'd switch TO. */
+  :root[data-theme="light"] .theme-toggle .icon-moon,
+  :root[data-theme="dark"] .theme-toggle .icon-sun {
+    display: none;
+  }
+
+  /* Layout ------------------------------------------------------------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    align-items: start;
+  }
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 1rem;
+    overflow-y: auto;
+    height: calc(100vh - 52px);
+    position: sticky;
+    top: 52px;
+  }
+  .content {
+    padding: 1.5rem 2.5rem;
+    max-width: 980px;
+    min-width: 0;
+  }
+  @media (max-width: 720px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+    .sidebar {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+  }
+
+  /* Code blocks -------------------------------------------------------- */
+  pre {
+    overflow-x: auto;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  pre:not(.code-block):not(.mermaid) {
+    padding: 0.9rem;
+  }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+  }
+  :not(pre) > code {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.1em 0.35em;
+  }
+  .code-block {
+    position: relative;
+    padding: 0;
+  }
+  .code-block > code {
+    display: block;
+    padding: 0.9rem;
+    overflow-x: auto;
+  }
+  .code-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 8px 8px 0 0;
+  }
+  .code-lang {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+  }
+  .code-copy {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+  }
+  .code-copy:hover {
+    color: var(--fg);
+  }
+  .code-copy.copied {
+    color: var(--callout-tip);
+    border-color: var(--callout-tip);
+  }
+
+  /* highlight.js tokens keyed off theme variables --------------------- */
+  .hljs {
+    color: var(--fg);
+    background: transparent;
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--hl-comment);
+    font-style: italic;
+  }
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-literal,
+  .hljs-doctag {
+    color: var(--hl-keyword);
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-meta .hljs-string {
+    color: var(--hl-string);
+  }
+  .hljs-number,
+  .hljs-bullet,
+  .hljs-link,
+  .hljs-meta {
+    color: var(--hl-number);
+  }
+  .hljs-title,
+  .hljs-section {
+    color: var(--hl-title);
+  }
+  .hljs-function .hljs-title,
+  .hljs-title.function_ {
+    color: var(--hl-function);
+  }
+  .hljs-type,
+  .hljs-class .hljs-title,
+  .hljs-title.class_ {
+    color: var(--hl-type);
+  }
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-property {
+    color: var(--hl-attr);
+  }
+  .hljs-symbol,
+  .hljs-params {
+    color: var(--hl-symbol);
+  }
+  .hljs-built_in,
+  .hljs-builtin-name {
+    color: var(--hl-builtin);
+  }
+  .hljs-selector-id,
+  .hljs-selector-class {
+    color: var(--hl-attr);
+  }
+  .hljs-deletion {
+    color: var(--hl-deletion);
+  }
+  .hljs-addition {
+    color: var(--hl-addition);
+  }
+  .hljs-emphasis {
+    font-style: italic;
+  }
+  .hljs-strong {
+    font-weight: 700;
+  }
+
+  /* Mermaid ------------------------------------------------------------ */
+  pre.mermaid {
+    background: transparent;
+    border: none;
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+  pre.mermaid[data-rendered="true"] {
+    overflow-x: auto;
+  }
+
+  /* Callouts ----------------------------------------------------------- */
+  blockquote[data-callout] {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--muted);
+    border-radius: 0 8px 8px 0;
+    background: var(--bg-subtle);
+  }
+  blockquote[data-callout] > :last-child {
+    margin-bottom: 0;
+  }
+  .callout-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.35rem;
+  }
+  blockquote[data-callout="note"] {
+    border-left-color: var(--callout-note);
+  }
+  blockquote[data-callout="note"] .callout-header {
+    color: var(--callout-note);
+  }
+  blockquote[data-callout="tip"] {
+    border-left-color: var(--callout-tip);
+  }
+  blockquote[data-callout="tip"] .callout-header {
+    color: var(--callout-tip);
+  }
+  blockquote[data-callout="important"] {
+    border-left-color: var(--callout-important);
+  }
+  blockquote[data-callout="important"] .callout-header {
+    color: var(--callout-important);
+  }
+  blockquote[data-callout="warning"] {
+    border-left-color: var(--callout-warning);
+  }
+  blockquote[data-callout="warning"] .callout-header {
+    color: var(--callout-warning);
+  }
+  blockquote[data-callout="caution"] {
+    border-left-color: var(--callout-caution);
+  }
+  blockquote[data-callout="caution"] .callout-header {
+    color: var(--callout-caution);
+  }
+
+  /* Command palette ---------------------------------------------------- */
+  .palette-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 12vh;
+    background: var(--overlay);
+  }
+  .palette-overlay[hidden] {
+    display: none;
+  }
+  .palette {
+    width: min(640px, 92vw);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .palette-search {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .palette-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--fg);
+    font-size: 1rem;
+  }
+  .palette-search kbd {
+    font-family: inherit;
+    font-size: 0.7rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.05rem 0.35rem;
+  }
+  .palette-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.35rem;
+    overflow-y: auto;
+  }
+  .palette-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .palette-item.selected {
+    background: var(--active);
+    color: var(--active-fg);
+  }
+  .palette-title {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .palette-meta {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .palette-item.selected .palette-meta {
+    color: inherit;
+    opacity: 0.8;
+  }
+  .palette-empty {
+    padding: 1.25rem 0.65rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  .palette-status {
+    padding: 0.4rem 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+</style>

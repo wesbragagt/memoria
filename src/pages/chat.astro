@@ -1,0 +1,42 @@
+---
+// Browse-past-conversations chat page. Two-pane React app (thread list + active
+// thread), same components as the header modal. When chat is unconfigured we
+// omit the island and show a friendly note — the API key is read only in the
+// server adapter, never shipped.
+import Base from "../layouts/Base.astro";
+import Tree from "../components/Tree.astro";
+import ChatPage from "../components/ChatPage";
+import { listDocs, buildTree } from "../domain/docs";
+import { isConfigured as chatConfigured } from "../adapters/chat-agent";
+
+const chatOn = chatConfigured();
+const docs = await listDocs();
+const tree = buildTree(docs);
+---
+
+<Base title="Ask the docs — memoria">
+  <Tree slot="tree" nodes={tree} />
+  {
+    chatOn ? (
+      <ChatPage client:only="react" />
+    ) : (
+      <div class="chat-unconfigured">
+        <h1>Chat is not configured</h1>
+        <p>
+          The documentation assistant is unavailable because no AI key is
+          configured on the server. Ask the site operator to enable it.
+        </p>
+      </div>
+    )
+  }
+</Base>
+
+<style>
+  .chat-unconfigured {
+    max-width: 40rem;
+    color: var(--fg);
+  }
+  .chat-unconfigured p {
+    color: var(--muted);
+  }
+</style>

@@ -1,0 +1,258 @@
+---
+# Kubernetes Deployment for the reusable live-SSR docs site.
+#
+# Key design decisions:
+#
+# 1. replicas: 1 (MUST stay 1)
+#    WHY: The git-sync webhook pulls content into a pod's /data/repo volume.
+#    If you run >1 replica, the webhook hits one pod, but the others have stale
+#    clones. Horizontal scaling of a stateful git-synced system requires a
+#    shared PVC (not shown here) or an external sync service. For most uses,
+#    one replica handles typical doc-site traffic. Scale the database, queue,
+#    or API that feeds search/chat, not the docs themselves.
+#
+# 2. /data volume: emptyDir (the default)
+#    WHY: Simple and ephemeral. Docs re-clone from git on pod start; old
+#    content is not recovered from the volume. Tradeoff: pod restart = re-clone
+#    (adds startup latency, stresses the git host). If you need to avoid that,
+#    use a PVC instead. For most use cases (docs synced hourly or on-demand),
+#    emptyDir is fine.
+#
+# 3. Environment variables
+#    - DOCS_GIT_REPO: git clone URL (https:// with token in secret, or ssh)
+#    - DOCS_GIT_REF: branch/tag to track (default: main)
+#    - DOCS_GIT_SUBTREE: path inside the repo (e.g., docs/ or . for root)
+#    - REPO_DIR: where git-sync clones to (Dockerfile default: /data/repo)
+#    - DOCS_DIR: where the site looks for .md/.mdx/.html (set to REPO_DIR/docs or the subtree)
+#    - Optional: GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID, GITHUB_APP_PRIVATE_KEY
+#                OPENROUTER_API_KEY (for AI chat)
+#
+# 4. Probes
+#    - startupProbe: allows time for the initial git clone
+#    - livenessProbe: verifies the server is still responding
+#    - readinessProbe: checks that the server can serve requests (doc dirs synced)
+#
+# 5. Shutdown grace period
+#    Allow in-flight requests to drain before SIGTERM (matching server.mjs).
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docs-config
+data:
+  # Place static config here if needed. Secrets (tokens, API keys) go in Secret.
+  DOCS_GIT_REF: "main"
+  DOCS_GIT_SUBTREE: "."
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docs-secrets
+type: Opaque
+stringData:
+  # DOCS_GIT_REPO should include credentials if HTTPS:
+  # https://token@github.com/org/repo.git (GitHub app token, personal access token, etc.)
+  # or use ssh+deploy-key for ssh:// URLs (configure via StatefulSet volumeMounts)
+  DOCS_GIT_REPO: "https://github.com/placeholder/docs.git"
+
+  # Required: webhook secret, verified by git-sync webhook handler
+  WEBHOOK_SECRET: "placeholder-webhook-secret-change-me"
+
+  # Optional: GitHub App credentials for webhook registration
+  # GITHUB_APP_ID: "123456"
+  # GITHUB_APP_INSTALLATION_ID: "789012"
+  # GITHUB_APP_PRIVATE_KEY: |
+  #   -----BEGIN RSA PRIVATE KEY-----
+  #   ...base64-encoded key...
+  #   -----END RSA PRIVATE KEY-----
+
+  # Optional: API key for AI chat (OpenRouter or similar)
+  # OPENROUTER_API_KEY: "sk-..."
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docs-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 4321
+      protocol: TCP
+  selector:
+    app: docs-site
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docs-site
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: docs-site
+  template:
+    metadata:
+      labels:
+        app: docs-site
+      annotations:
+        prometheus.io/scrape: "false"
+    spec:
+      # terminationGracePeriodSeconds allows in-flight requests to drain.
+      # server.mjs drains for SHUTDOWN_GRACE_MS (default 10s), then force-closes.
+      terminationGracePeriodSeconds: 20
+
+      containers:
+        - name: docs-site
+          # Replace REGISTRY/IMAGE:TAG with your image
+          image: REGISTRY/docs-site:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 4321
+              protocol: TCP
+
+          env:
+            # Static config from ConfigMap
+            - name: DOCS_GIT_REF
+              valueFrom:
+                configMapKeyRef:
+                  name: docs-config
+                  key: DOCS_GIT_REF
+
+            - name: DOCS_GIT_SUBTREE
+              valueFrom:
+                configMapKeyRef:
+                  name: docs-config
+                  key: DOCS_GIT_SUBTREE
+
+            # Secrets
+            - name: DOCS_GIT_REPO
+              valueFrom:
+                secretKeyRef:
+                  name: docs-secrets
+                  key: DOCS_GIT_REPO
+
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: docs-secrets
+                  key: WEBHOOK_SECRET
+
+            # Optional GitHub App credentials (uncomment Secret stringData above to use)
+            # - name: GITHUB_APP_ID
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: docs-secrets
+            #       key: GITHUB_APP_ID
+            #
+            # - name: GITHUB_APP_INSTALLATION_ID
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: docs-secrets
+            #       key: GITHUB_APP_INSTALLATION_ID
+            #
+            # - name: GITHUB_APP_PRIVATE_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: docs-secrets
+            #       key: GITHUB_APP_PRIVATE_KEY
+
+            # Optional AI key
+            # - name: OPENROUTER_API_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: docs-secrets
+            #       key: OPENROUTER_API_KEY
+
+            # Server config
+            - name: HOST
+              value: "0.0.0.0"
+
+            - name: PORT
+              value: "4321"
+
+            - name: REPO_DIR
+              value: "/data/repo"
+
+            - name: DOCS_DIR
+              value: "/data/repo/docs"
+
+            - name: NODE_ENV
+              value: "production"
+
+            - name: SHUTDOWN_GRACE_MS
+              value: "10000"
+
+          # startupProbe: allow time for the initial git clone (may take 30-60s)
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 20  # ~100s total before giving up
+
+          # livenessProbe: kill the pod if the server stops responding
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          # readinessProbe: remove from load balancer if not healthy
+          # (check /healthz once initial sync is done)
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+
+          # Resource requests / limits (adjust based on your docs size)
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          # /data is mounted as emptyDir (see volumes below)
+          volumeMounts:
+            - name: data
+              mountPath: /data
+
+          # Set securityContext to match Dockerfile (non-root: node:node)
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: false
+
+      # emptyDir: ephemeral; docs re-clone on pod restart.
+      # To persist across restarts, replace with:
+      #   persistentVolumeClaim:
+      #     claimName: docs-data-pvc
+      # (you must create the PVC separately)
+      volumes:
+        - name: data
+          emptyDir: {}
+
+      # Optional: imagePullSecrets if your registry is private
+      # imagePullSecrets:
+      #   - name: registry-credentials

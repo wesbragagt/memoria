@@ -1,0 +1,68 @@
+---
+// Recursive nav tree shared by the home and doc pages. Renders a TreeNode[]
+// as nested lists; docs link to /docs/<slug>, folders are non-clickable labels
+// (folders have no pages). The active doc gets aria-current + a class hook.
+import type { TreeNode } from "../domain/docs";
+
+interface Props {
+  nodes: TreeNode[];
+}
+
+const { nodes } = Astro.props;
+---
+
+<ul class="tree">
+  {
+    nodes.map((node) =>
+      node.type === "folder" ? (
+        <li class="tree-folder">
+          <span class="tree-folder-name">{node.name}</span>
+          <Astro.self nodes={node.children} />
+        </li>
+      ) : (
+        <li class="tree-doc">
+          <a
+            href={`/docs/${node.doc.slug}`}
+            class:list={["tree-link", { active: node.active }]}
+            aria-current={node.active ? "page" : undefined}
+          >
+            {node.name}
+          </a>
+        </li>
+      ),
+    )
+  }
+</ul>
+
+<style>
+  .tree {
+    list-style: none;
+    margin: 0;
+    padding-left: 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+  .tree-folder-name {
+    display: block;
+    font-weight: 600;
+    color: var(--muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .tree-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
+  .tree-link:hover {
+    background: var(--hover, #eee);
+  }
+  .tree-link.active {
+    font-weight: 600;
+    background: var(--active, #e0e7ff);
+  }
+</style>

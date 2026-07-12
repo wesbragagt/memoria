@@ -1,0 +1,34 @@
+# Live Data Embeds
+
+Docs can embed live query results with no code change — just authored markup.
+Add a `data-sql-table` container with an inline SQL query. The client island
+runs it through the guarded `/api/query.json` endpoint and renders a table.
+
+When the query engine is not configured, the embed quietly reports
+"Live data unavailable" and the "Show SQL" disclosure still works — the page
+never errors.
+
+## Example
+
+<div data-sql-table data-title="Recent orders">
+  <script type="text/plain" data-sql>
+    SELECT id, customer, total
+    FROM orders
+    ORDER BY created_at DESC
+    LIMIT 10
+  </script>
+</div>
+
+Queries must be a single read-only statement starting with `SELECT` or `WITH`;
+results are capped server-side. One failing embed never blocks another:
+
+<div data-sql-table data-title="Top products (CTE)">
+  <script type="text/plain" data-sql>
+    WITH ranked AS (
+      SELECT product, SUM(qty) AS units
+      FROM order_items
+      GROUP BY product
+    )
+    SELECT product, units FROM ranked ORDER BY units DESC LIMIT 5
+  </script>
+</div>

@@ -1,0 +1,123 @@
+---
+# Ingress routing + SSO authentication for the docs site.
+#
+# Key design: two Ingress resources (or one with multiple rules) to handle
+# conflicting auth requirements:
+#
+# 1. Root path (/) and doc paths: protected by SSO/OIDC via oauth2-proxy-style
+#    auth-url annotation. Only authenticated users can read docs.
+#
+# 2. Webhook path (/api/github-webhook): PUBLIC, HMAC-verified only.
+#    WHY: GitHub (or other git hosts) cannot authenticate via your SSO. The
+#    webhook must be reachable by the public git server. HMAC-SHA256 (using
+#    WEBHOOK_SECRET) is its only protection. Path specificity must win: a more
+#    specific path (like /api/github-webhook) will match before the root catch-all.
+#
+# Auth Annotations (nginx.ingress.kubernetes.io/):
+# - auth-url: where nginx should redirect for authentication
+#   (e.g., http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth)
+# - auth-signin: where unauthenticated users are redirected to log in
+#   (e.g., http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/start?rd=https://$host$request_uri)
+# - auth-response-headers: headers to forward from the auth service
+#   (e.g., "X-Auth-Request-User,X-Auth-Request-Email")
+#
+# Replace placeholders with your actual auth service and domain.
+
+# --- Ingress 1: SSO-gated root (/) and all doc paths ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docs-site-gated
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # or your issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    # SSO / OIDC gating via oauth2-proxy.
+    # Replace example.com and oauth2-proxy service endpoints with your values.
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://docs.example.com/oauth2/start?rd=https://$host$request_uri"
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Groups"
+
+    # Optional: customize auth error handling
+    nginx.ingress.kubernetes.io/auth-signin-redirect-parameter: "rd"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - docs.example.com
+      secretName: docs-site-tls
+
+  rules:
+    - host: docs.example.com
+      http:
+        paths:
+          # Root and all subpaths for the docs site are protected by default
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: docs-svc
+                port:
+                  number: 80
+
+---
+# --- Ingress 2: Public webhook endpoint (no auth) ---
+#
+# This Ingress is for the /api/github-webhook path only. It does NOT have
+# auth annotations, so requests to /api/github-webhook skip oauth2-proxy.
+#
+# Path specificity: Kubernetes routing will match the more specific path
+# (/api/github-webhook) to this Ingress BEFORE falling back to the root path
+# in the gated Ingress. This is the same host, so ordering matters in nginx.
+#
+# IMPORTANT: Your nginx ingress controller must be configured to respect path
+# specificity (it usually does by default). Check your ingress controller docs
+# if the webhook path is still being gated by auth.
+#
+# Webhook security: ONLY HMAC-SHA256 (X-Hub-Signature-256 header verification
+# in the server). Ensure WEBHOOK_SECRET is unique and strong.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docs-site-webhook
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # same issuer as gated
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - docs.example.com
+      secretName: docs-site-tls
+
+  rules:
+    - host: docs.example.com
+      http:
+        paths:
+          # Webhook path: no auth, HMAC verified by the server
+          - path: /api/github-webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: docs-svc
+                port:
+                  number: 80
+
+---
+# Optional: Certificate resource (cert-manager)
+# Uncomment if you use cert-manager. Otherwise, manually create the TLS secret.
+#
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: docs-site-cert
+# spec:
+#   secretName: docs-site-tls
+#   issuerRef:
+#     name: letsencrypt-prod
+#     kind: ClusterIssuer
+#   dnsNames:
+#     - docs.example.com

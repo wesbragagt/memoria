@@ -1,0 +1,15 @@
+# The image must contain NO content and no build byproducts — docs are synced
+# from git at runtime. Keep the build context minimal.
+node_modules
+dist
+docs
+prd
+.git
+.gitignore
+*.md
+.env
+.env.*
+.DS_Store
+Dockerfile
+.dockerignore
+data
