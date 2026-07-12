@@ -137,6 +137,82 @@ describe("runAgent — search → read → cite flow", () => {
   });
 });
 
+describe("runAgent — live token streaming", () => {
+  it("yields the first token event before the upstream stream closes", async () => {
+    const encoder = new TextEncoder();
+    // A gate the test controls: the stream enqueues two token frames, then
+    // parks on this promise before enqueuing the rest and closing. If runAgent
+    // buffered until stream close, the first token event could not be observed
+    // until after we release the gate — so observing it early proves live flow.
+    let releaseGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify(tokenChunk("Hello "))}\n\n`,
+          ),
+        );
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(tokenChunk("there"))}\n\n`),
+        );
+        // Park until the test releases the gate, then finish the stream.
+        await gate;
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify(tokenChunk("!", "stop"))}\n\n`,
+          ),
+        );
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const gen = runAgent([{ role: "user", content: "hi" }]);
+
+    // Drain until the first token event WITHOUT releasing the gate. If tokens
+    // were buffered until stream close, this loop would hang (never resolving),
+    // so the vitest timeout would fail the test.
+    let firstToken: ChatEvent | undefined;
+    for (;;) {
+      const { value, done } = await gen.next();
+      if (done) break;
+      if (value.type === "token") {
+        firstToken = value;
+        break;
+      }
+    }
+
+    // We got a token event while the stream is still open (gate un-released).
+    expect(firstToken).toBeDefined();
+    expect(firstToken?.type).toBe("token");
+    if (firstToken?.type === "token") expect(firstToken.text).toBe("Hello ");
+
+    // Now let the rest of the stream flow and confirm normal completion.
+    releaseGate();
+    const rest = await collect(gen);
+    const restTypes = rest.map((e) => e.type);
+    expect(restTypes[restTypes.length - 1]).toBe("done");
+    const remainingText = rest
+      .filter((e): e is Extract<ChatEvent, { type: "token" }> => e.type === "token")
+      .map((e) => e.text)
+      .join("");
+    // First token ("Hello ") already consumed above; the rest arrive after gate.
+    expect(remainingText).toBe("there!");
+  });
+});
+
 describe("runAgent — step cap", () => {
   it("cuts off a model that always requests tools and still ends with done", async () => {
     // Model requests search_docs on EVERY tool-enabled round. The agent must

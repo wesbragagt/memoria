@@ -176,15 +176,26 @@ interface StreamOutcome {
 }
 
 /**
- * POST one chat-completions request with stream:true, parse the SSE body,
- * accumulate assistant text and any tool-call deltas. `onToken` fires for each
- * content delta so the caller can forward tokens live.
+ * A live event from a completion stream: a `content` delta (a chunk of answer
+ * text) or a `tool` marker emitted the first time a tool-call delta is seen.
+ * The marker lets the caller distinguish an answer round (content only) from a
+ * tool round without waiting for the stream to close.
  */
-async function streamCompletion(
+type StreamDelta =
+  | { kind: "content"; text: string }
+  | { kind: "tool" };
+
+/**
+ * POST one chat-completions request with stream:true, parse the SSE body,
+ * accumulate assistant text and any tool-call deltas. Yields each content delta
+ * as it arrives (and a one-time `tool` marker when a tool call begins) so the
+ * caller can forward tokens live, and returns the fully accumulated
+ * StreamOutcome (content + tool calls) when the stream closes.
+ */
+async function* streamCompletion(
   messages: ChatMessage[],
   allowTools: boolean,
-  onToken: (text: string) => void,
-): Promise<StreamOutcome> {
+): AsyncGenerator<StreamDelta, StreamOutcome, void> {
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
@@ -212,6 +223,7 @@ async function streamCompletion(
 
   let content = "";
   let finishReason: string | null = null;
+  let toolMarkerSent = false;
   // tool calls accumulate across deltas, keyed by their streamed index.
   const partial = new Map<number, { id: string; name: string; args: string }>();
 
@@ -247,7 +259,11 @@ async function streamCompletion(
       if (!delta) continue;
       if (delta.content) {
         content += delta.content;
-        onToken(delta.content);
+        yield { kind: "content", text: delta.content };
+      }
+      if (delta.tool_calls?.length && !toolMarkerSent) {
+        toolMarkerSent = true;
+        yield { kind: "tool" };
       }
       for (const tc of delta.tool_calls ?? []) {
         const cur =
@@ -311,9 +327,15 @@ export async function* runAgent(
     }
   };
 
-  // Per-request token queue: streamCompletion's onToken (sync) pushes here and
-  // the generator drains it in order. Local, so concurrent requests don't mix.
-  const tokens: string[] = [];
+  // Buffers deltas seen during a round until we know whether it's a tool round
+  // (deltas discarded) or the answer round (sources emitted, then deltas +
+  // subsequent deltas streamed live). Local, so concurrent requests don't mix.
+  const emitSources = () => {
+    if (sources.size > 0) {
+      return { type: "sources" as const, sources: [...sources.values()] };
+    }
+    return undefined;
+  };
 
   try {
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
@@ -329,16 +351,32 @@ export async function* runAgent(
         });
       }
 
-      let streamedAny = false;
-      const outcome = await streamCompletion(messages, allowTools, (text) => {
-        streamedAny = true;
-        tokens.push(text);
-      });
+      // Drain the completion stream live. An assistant turn is EITHER a
+      // tool-call turn OR a text answer (they never interleave in the wire
+      // protocol), so the first content delta of a round marks the answer: we
+      // emit sources (collected in prior tool rounds) once, then forward each
+      // token as it arrives — no buffering until the upstream stream closes.
+      // A `tool` marker means this is a tool round; content, if any, is ignored.
+      const stream = streamCompletion(messages, allowTools);
+      let answerStarted = false;
+      let outcome: StreamOutcome;
+      for (;;) {
+        const next = await stream.next();
+        if (next.done) {
+          outcome = next.value;
+          break;
+        }
+        if (next.value.kind === "tool") continue;
+        if (!answerStarted) {
+          answerStarted = true;
+          const src = emitSources();
+          if (src) yield src;
+        }
+        yield { type: "token", text: next.value.text };
+      }
 
       if (allowTools && outcome.toolCalls.length > 0) {
-        // Tool-requesting round: any incidental text is dropped (not an answer);
-        // clear the token buffer before executing tools.
-        tokens.length = 0;
+        // Tool-requesting round: any incidental text was ignored (not an answer).
         // Record the assistant's tool-call turn verbatim so the follow-up
         // request has matching tool_call_id references.
         messages.push({
@@ -391,14 +429,13 @@ export async function* runAgent(
         continue; // next round with tool results in context
       }
 
-      // No tool calls: this is the answer. Emit citations BEFORE the answer
-      // text so the UI can render the source links alongside it, then flush the
-      // buffered token deltas in order.
-      if (sources.size > 0) {
-        yield { type: "sources", sources: [...sources.values()] };
-      }
-      while (tokens.length) yield { type: "token", text: tokens.shift() as string };
-      if (!streamedAny && outcome.content) {
+      // No tool calls: this is the answer. Tokens and sources were streamed live
+      // above as deltas arrived. If the stream carried no content deltas but the
+      // outcome still has accumulated text, emit sources then that text now (a
+      // defensive fallback for non-streamed answers). Sources come BEFORE tokens.
+      if (!answerStarted && outcome.content) {
+        const src = emitSources();
+        if (src) yield src;
         yield { type: "token", text: outcome.content };
       }
       yield { type: "done" };

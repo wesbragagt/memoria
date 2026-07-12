@@ -329,15 +329,7 @@ export function ensureCloned(): Promise<void> {
     if (await exists(path.join(repoDir, ".git"))) return; // already cloned
     // Clone into staging then swap into place, so a partial clone never
     // becomes the live checkout.
-    const staging = `${repoDir}.staging-${randomUUID()}`;
-    await rm(staging, { recursive: true, force: true });
-    try {
-      await cloneInto(staging, cfg);
-      await rm(repoDir, { recursive: true, force: true });
-      await rename(staging, repoDir);
-    } finally {
-      await rm(staging, { recursive: true, force: true }).catch(() => {});
-    }
+    await stageAndSwap(repoDir, cfg);
   }).catch((err) => {
     initPromise = null; // allow retry on next request
     throw err;
@@ -388,14 +380,69 @@ export function syncToLatest(): Promise<SyncResult> {
   });
 }
 
-/** Clone fresh into a sibling dir and atomically replace the live checkout. */
+/**
+ * Remove leftover staging/backup siblings a crashed prior run may have left
+ * next to the live checkout. Safe to run before every stage-and-swap: these
+ * dirs are only ever transient scratch space owned by this adapter.
+ */
+async function cleanStaleSiblings(repoDir: string): Promise<void> {
+  const parent = path.dirname(repoDir);
+  const name = path.basename(repoDir);
+  let entries: string[];
+  try {
+    entries = await readdir(parent);
+  } catch {
+    return;
+  }
+  await Promise.all(
+    entries
+      .filter(
+        (n) =>
+          n.startsWith(`${name}.staging-`) || n.startsWith(`${name}.backup-`),
+      )
+      .map((n) =>
+        rm(path.join(parent, n), { recursive: true, force: true }).catch(
+          () => {},
+        ),
+      ),
+  );
+}
+
+/**
+ * Clone fresh into a sibling dir and publish it as the live checkout without
+ * ever leaving DOCS_DIR missing or losing served content:
+ *
+ *  1. Clone into a fresh `staging` sibling. If this throws, the live checkout
+ *     is entirely untouched and still served.
+ *  2. Promote by two same-filesystem (hence atomic) renames: move the current
+ *     live checkout aside to `backup`, then move `staging` into place. The only
+ *     window where DOCS_DIR is absent is the instant between those two renames.
+ *  3. Delete `backup`. If the second rename fails, roll `backup` back into
+ *     place and rethrow — the old content is restored, never lost.
+ */
 async function stageAndSwap(repoDir: string, cfg: Config): Promise<void> {
+  await cleanStaleSiblings(repoDir);
   const staging = `${repoDir}.staging-${randomUUID()}`;
-  await rm(staging, { recursive: true, force: true });
+  const backup = `${repoDir}.backup-${randomUUID()}`;
   try {
     await cloneInto(staging, cfg); // if this throws, live checkout untouched
-    await rm(repoDir, { recursive: true, force: true });
-    await rename(staging, repoDir);
+
+    if (await exists(repoDir)) {
+      // Preserve the current checkout under `backup` until promotion succeeds,
+      // so a failed/interrupted swap can never wipe served content.
+      await rename(repoDir, backup);
+      try {
+        await rename(staging, repoDir);
+      } catch (err) {
+        // Promotion failed after moving live aside — restore the old checkout.
+        await rename(backup, repoDir).catch(() => {});
+        throw err;
+      }
+      await rm(backup, { recursive: true, force: true }).catch(() => {});
+    } else {
+      // No live checkout yet (initial clone): a single rename publishes it.
+      await rename(staging, repoDir);
+    }
     // Successful swap means the memoized init is now valid.
     initPromise = Promise.resolve();
   } finally {

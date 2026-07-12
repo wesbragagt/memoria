@@ -1,8 +1,9 @@
 /**
  * Tiny, dependency-free Markdown → safe HTML renderer for chat answers. Covers
  * the subset an assistant realistically emits: headings, bold/italic, inline
- * code, fenced code blocks, links, and unordered/ordered lists. Everything is
- * HTML-escaped first, so model output can never inject markup.
+ * code, fenced code blocks, links, and unordered/ordered lists. All user input
+ * is HTML-escaped and validated. Links are validated against a safe-scheme
+ * allowlist (http:, https:, mailto:, and site-relative paths) before rendering.
  *
  * This is intentionally minimal — not a spec-complete parser. It exists so the
  * chat UI ships zero markdown dependencies while still reading nicely.
@@ -12,7 +13,19 @@ function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function isValidLinkHref(href: string): boolean {
+  // Reject protocol-relative URLs (// is dangerous)
+  if (href.startsWith("//")) return false;
+  // Allow http://, https://, mailto:, and site-relative paths (/ or #)
+  if (href.startsWith("http://") || href.startsWith("https://")) return true;
+  if (href.startsWith("mailto:")) return true;
+  if (href.startsWith("/") || href.startsWith("#")) return true;
+  return false;
 }
 
 function inline(text: string): string {
@@ -23,7 +36,13 @@ function inline(text: string): string {
   out = out.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
   out = out.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    (_m, label, href) => `<a href="${escapeHtml(href)}">${label}</a>`,
+    (_m, label, href) => {
+      if (!isValidLinkHref(href)) {
+        // Reject dangerous schemes; render as escaped text
+        return escapeHtml(label);
+      }
+      return `<a href="${escapeHtml(href)}">${label}</a>`;
+    },
   );
   return out;
 }
