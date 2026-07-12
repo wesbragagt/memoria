@@ -3,6 +3,21 @@
 Turn a folder of markdown into a searchable, live, optionally AI-queryable docs
 site — with **zero rebuild** between editing a doc and seeing it live.
 
+## TL;DR
+
+- **Zero-build.** Docs render at request time — edit a file, refresh, it's
+  live. No compile step in dev or prod.
+- **Push-to-publish via webhook.** Content syncs from your git repo at
+  runtime; a signed push webhook refreshes it with no redeploy. The container
+  image ships no content, so one image serves any team's docs.
+- **Live data embedded in docs.** Author a `data-sql-table` block in markdown
+  and get a live, guarded query results table — no code change.
+- **AI chat grounded in your docs.** Optional "ask the docs" agent streams
+  answers that cite the pages it actually read.
+- **Batteries included, nothing required.** Full-text search (no external
+  service), ⌘K palette, dark mode, mermaid, callouts — and every optional
+  feature turns off cleanly when unconfigured.
+
 ## Why use this?
 
 Most docs tooling (Docusaurus, VitePress, MkDocs…) compiles content at build
@@ -34,8 +49,8 @@ between "I noticed a mistake" and "it's fixed for everyone."
 | --- | --- |
 | ![Home — nav tree, recently updated, favorites](.github/screenshots/home.png) | ![⌘K palette with live search results](.github/screenshots/palette.png) |
 | *Home: nav tree, recently updated, search* | *⌘K palette with live results* |
-| ![Doc page in dark mode](.github/screenshots/dark.png) | |
-| *Dark mode (pre-paint, no flash)* | |
+| ![Doc page in dark mode](.github/screenshots/dark.png) | ![Ask-the-docs AI chat with cited sources](.github/screenshots/ai-chat.png) |
+| *Dark mode (pre-paint, no flash)* | *AI chat: streamed answers citing the docs it read* |
 
 ## Get started
 
