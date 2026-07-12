@@ -1,56 +1,79 @@
 # Memoria — live-SSR docs site
 
-Turn any folder of docs into a searchable, live, optionally AI-queryable site —
-with **zero rebuild** between a docs edit and it going live.
+Turn a folder of markdown into a searchable, live, optionally AI-queryable docs
+site — with **zero rebuild** between editing a doc and seeing it live.
 
-Docs are rendered at request time and synced from a git repo at runtime, so the
-deployable artifact carries no content: fix a typo, push, and the next page view
-shows it. No redeploy, ever.
+## Why use this?
 
-## Quick start (local)
+Most docs tooling (Docusaurus, VitePress, MkDocs…) compiles content at build
+time. That creates two costs that make docs rot:
+
+- **Edit latency.** Every typo fix means rebuild → redeploy → wait. When
+  publishing a change takes minutes of CI, people stop making small fixes.
+- **Coupling.** Content is baked into the artifact. Docs and deploys are welded
+  together, so the team that writes docs depends on the team that ships code.
+
+Memoria renders docs **at request time** and syncs them **from git at
+runtime**:
+
+- Edit a file, refresh the page — the change is live. Locally *and* in
+  production (a push to your docs repo refreshes content via webhook, no
+  deploy).
+- The deployable image contains **no content**. One prebuilt image serves any
+  team's docs — adopting it is configuration, not a codebase.
+- Writers only ever touch markdown. Adding a page, a cross-link, a mermaid
+  diagram, or even a live SQL table is a docs edit, not a code change.
+- Search, nav tree, dark mode, and recents/favorites work out of the box with
+  no external services. AI "ask the docs" chat and live-data embeds are
+  opt-in via a single env var each, and hide themselves when unconfigured.
+
+If your docs live next to your code and change often, this removes every step
+between "I noticed a mistake" and "it's fixed for everyone."
+
+## Get started
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:4321. The site serves whatever is in `docs/` — edit a
-file and reload; the change is live immediately.
+Open http://localhost:4321 — the site serves the `docs/` folder. Edit a file,
+reload, see the change.
 
-To point it at your own content:
+Point it at your own docs:
 
 ```bash
 DOCS_DIR=/path/to/your/docs npm run dev
 ```
 
-That's the whole local setup. No git sync, no keys, no config needed — optional
-features stay quietly off until configured.
+That's it. No config files, no keys — optional features stay off until you
+enable them (see [Configuration](#configuration)).
+
+**Add a page:** drop a `.md` file anywhere under the docs folder. It's live at
+the URL matching its path (`guides/setup.md` → `/docs/guides/setup`).
 
 ## Authoring
-
-Drop files into the content directory; each becomes a page at a URL matching
-its path (`guides/setup.md` → `/docs/guides/setup`). No code change, no rebuild.
 
 | You write | You get |
 | --- | --- |
 | `.md` | Rendered markdown (GFM), raw HTML stripped |
 | `.mdx` | Markdown with raw HTML passthrough (basis for live-data embeds) |
-| `.html` | Served as a fragment in the site layout, or verbatim as a full page with `standalone: true` frontmatter |
-| `# Heading` | Page title (md/mdx) — first H1 wins |
-| Relative links (`../foo.md`) | Rewritten to in-site routes when the target doc exists; external/anchor/unknown links left as authored |
+| `.html` | A fragment in the site layout, or a verbatim full page with `standalone: true` frontmatter |
+| `# Heading` | The page title (first H1 wins) |
+| Relative links (`../foo.md`) | Rewritten to in-site routes when the target exists; external/anchor/unknown links left as authored |
 | ` ```mermaid ` fences | Client-rendered, theme-aware diagrams |
 | `> [!NOTE]` / `[!WARNING]` | Styled callouts |
 | Code fences | Syntax highlighting + copy button |
 | `<div data-sql-table>` with inline SQL (in `.mdx`) | A live results table (when a query engine is configured) |
 
-Readers get a nav tree, breadcrumbs, ⌘K search palette (with a no-JS `?q=`
-fallback on the home page), light/dark theme, and per-reader recents/favorites —
-all with no per-doc setup.
+Readers get a nav tree, breadcrumbs, a ⌘K search palette (with a no-JS `?q=`
+fallback), light/dark theme, and per-reader recents/favorites — no per-doc
+setup.
 
 ## Configuration
 
-Everything is env vars, read at call time. Copy `.env.example` and fill in what
-you need — every feature degrades cleanly when unset.
+Everything is env vars; every feature degrades cleanly when unset. Copy
+`.env.example` and fill in only what you need.
 
 | Env var | Default | Enables |
 | --- | --- | --- |
@@ -69,8 +92,7 @@ you need — every feature degrades cleanly when unset.
 
 ## Production
 
-The image contains **no content** — one build serves anyone's docs via env
-config alone:
+The image contains no content — one build serves anyone's docs via env alone:
 
 ```bash
 npm run docker:build

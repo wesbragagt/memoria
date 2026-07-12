@@ -10,7 +10,7 @@
 # better-sqlite3 or other N-API modules), so no build toolchain / rebuild is
 # needed in the prod-deps stage.
 
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 
 # --- deps: full install for the build ---------------------------------------
 FROM node:${NODE_VERSION}-slim AS deps
