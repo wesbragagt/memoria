@@ -9,18 +9,16 @@ The webhook is what completes the zero-rebuild loop in production. Without it,
 the site serves whatever it cloned at boot and only picks up changes on a pod
 restart. With it, publishing a doc **is** pushing to git: GitHub notifies the
 site, the site fetches the new commit, and the very next page view serves the
-updated content. It is also the only public, unauthenticated endpoint in the
-deployment — GitHub cannot log in through your SSO — so its HMAC signature is
-the entire trust boundary. Setting it up correctly (strong secret, signed
-payloads) is what lets that endpoint stay exposed safely.
+updated content. The endpoint is public and unauthenticated — GitHub has to
+be able to reach it directly — so its HMAC signature is the entire trust
+boundary. Setting it up correctly (strong secret, signed payloads) is what
+lets that endpoint stay exposed safely.
 
 ## Prerequisites
 
 - The site deployed with `DOCS_GIT_REPO` pointing at your docs repository
   (see [Install the site](install.md)).
-- `/api/github-webhook` reachable from GitHub — publicly, without SSO
-  (in Kubernetes: a more-specific unauthenticated ingress path; see
-  `deploy/ingress.yaml` in the project repo).
+- `/api/github-webhook` publicly reachable from GitHub.
 - Admin access to the docs repository.
 
 ## 1. Create a strong secret
@@ -78,8 +76,8 @@ live, and the delivery log shows `200 {"synced":true}`.
 - **`200 {"synced":false, "reason":"push to untracked ref"}`** — you pushed a
   branch other than `DOCS_GIT_REF`. Push to the tracked branch or change the
   env var.
-- **Delivery times out** — the endpoint isn't publicly reachable; check that
-  the webhook path bypasses your SSO proxy.
+- **Delivery times out** — the endpoint isn't publicly reachable from GitHub;
+  check your ingress/firewall exposes the webhook path.
 - **Private repo, sync fails after delivery** — the site needs credentials to
   fetch: configure the GitHub App variables listed in the
   [configuration reference](../reference/configuration.md).
