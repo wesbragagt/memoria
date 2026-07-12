@@ -10,6 +10,7 @@ this index is the entry point for humans and agents alike.
   [Getting Started](tutorials/getting-started.md)
 - **how-to/** — task-oriented recipes.
   [Install the site](how-to/install.md) ·
+  [Set up the GitHub webhook](how-to/set-up-github-webhook.md) ·
   [Embed live data](how-to/embed-live-data.mdx)
 - **reference/** — information-oriented specifications.
   [Configuration](reference/configuration.md) ·
