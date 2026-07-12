@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Local planning archive (not tracked)
 archive/
+
+# Code review artifacts (not tracked)
+reviews/
