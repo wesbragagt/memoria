@@ -77,6 +77,44 @@ Readers get a nav tree, breadcrumbs, a ⌘K search palette (with a no-JS `?q=`
 fallback), light/dark theme, and per-reader recents/favorites — no per-doc
 setup.
 
+## Organizing your knowledge base
+
+Memoria renders whatever structure you give it — folders become the nav tree,
+relative links become cross-references, frontmatter carries metadata. A few
+conventions make the same content work well for humans *and* AI agents (the
+built-in chat, or any agent pointed at your docs repo):
+
+- **Plain markdown in git is the format.** No proprietary silo: the same files
+  are readable by people, diffable in PRs, greppable by agents, and portable to
+  any other tool. That's the "docs-as-code" principle.
+- **One concept per doc, linked liberally.** Small, atomic pages with relative
+  links between them (Zettelkasten style) beat sprawling mega-pages — for
+  readers navigating and for retrieval, since search and `read_doc` both work
+  page-at-a-time.
+- **Organize by reader intent, not org chart.** The [Diátaxis](https://diataxis.fr)
+  framework's four folders — `tutorials/`, `how-to/`, `reference/`,
+  `explanation/` — map directly onto Memoria's nav tree and tell both a human
+  and an agent what kind of answer a doc contains.
+- **Stable, meaningful paths.** The URL is derived from the file path, so a
+  predictable scheme (Diátaxis folders, or numbered
+  [Johnny Decimal](https://johnnydecimal.com) categories) keeps links from
+  rotting and gives agents a browsable taxonomy.
+- **Frontmatter for metadata, H1 for the title.** Keep authoring metadata
+  (`title:`, `standalone:`, tags) in frontmatter — Memoria strips it from the
+  rendered page but tools can index it. The first `# H1` is the single source
+  of truth for the title.
+- **Give agents an entry point.** A top-level index/overview doc (the spirit of
+  [llms.txt](https://llmstxt.org)) that lists what lives where dramatically
+  improves agent navigation; an [AGENTS.md](https://agents.md) in the docs repo
+  can state the conventions themselves.
+
+Further reading: [Diátaxis](https://diataxis.fr) ·
+[llms.txt spec](https://llmstxt.org) ·
+[Zettelkasten introduction](https://zettelkasten.de/introduction/) ·
+[Johnny Decimal](https://johnnydecimal.com) ·
+[Write the Docs: docs as code](https://www.writethedocs.org/guide/docs-as-code/) ·
+[AGENTS.md](https://agents.md)
+
 ## Configuration
 
 Everything is env vars; every feature degrades cleanly when unset. Copy
