@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Astro
 .astro/
+
+# Local planning archive (not tracked)
+archive/
