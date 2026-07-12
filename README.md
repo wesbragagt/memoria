@@ -39,6 +39,14 @@ between "I noticed a mistake" and "it's fixed for everyone."
 
 ## Get started
 
+With Docker (no toolchain needed):
+
+```bash
+docker compose up
+```
+
+Or with Node ≥24:
+
 ```bash
 npm install
 npm run dev

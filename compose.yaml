@@ -1,0 +1,40 @@
+# Quick bootstrap: `docker compose up` and open http://localhost:4321
+#
+# Default mode serves the local ./docs folder mounted read-only — edit a file,
+# reload the page, the change is live. No env vars needed.
+#
+# For the production-like mode (content synced from a git repo at runtime),
+# set DOCS_GIT_REPO and WEBHOOK_SECRET in a .env file (see .env.example) and
+# comment out the volumes/DOCS_DIR lines below so the git checkout in /data
+# is used instead of the local mount.
+
+services:
+  docs:
+    build: .
+    ports:
+      - "4321:4321"
+    volumes:
+      # Local mode: serve ./docs live. Remove for git-sync mode.
+      - ./docs:/content:ro
+      # Writable volume for the git checkout (used in git-sync mode).
+      - docs-data:/data
+    environment:
+      # Local mode: point at the mount. Remove for git-sync mode.
+      DOCS_DIR: /content
+      # Git-sync mode (all optional; empty = feature off):
+      DOCS_GIT_REPO: ${DOCS_GIT_REPO:-}
+      DOCS_GIT_REF: ${DOCS_GIT_REF:-main}
+      DOCS_GIT_SUBTREE: ${DOCS_GIT_SUBTREE:-docs}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+      # Optional features:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      DOCS_AI_MODEL: ${DOCS_AI_MODEL:-}
+      QUERY_ENGINE_URL: ${QUERY_ENGINE_URL:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4321/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+
+volumes:
+  docs-data:
