@@ -177,3 +177,7 @@ Invariants the test suite pins — don't weaken them to pass:
 5. Link rewriting only touches links to real docs.
 6. Optional features degrade, never error — and a failed content sync never
    wipes the currently served content.
+
+## License
+
+[MIT](LICENSE)
