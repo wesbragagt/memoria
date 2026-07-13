@@ -147,6 +147,10 @@ Commonly used documentation structures, any of which work here:
   densely-linked notes; structure emerges from links rather than folders.
 - [Johnny Decimal](https://johnnydecimal.com) — numbered categories
   (`10-19 …`, `11.02 …`) for predictable, stable locations.
+- [Building a Second Brain](https://www.buildingasecondbrain.com) (Tiago
+  Forte) — personal knowledge management with the
+  [PARA method](https://fortelabs.com/blog/para/): Projects, Areas, Resources,
+  Archives, organized by actionability.
 - [arc42](https://arc42.org) — a fixed 12-section template for software
   architecture documentation.
 
