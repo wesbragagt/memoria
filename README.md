@@ -102,10 +102,13 @@ setup.
 
 ## Organizing your knowledge base
 
-Memoria renders whatever structure you give it — folders become the nav tree,
-relative links become cross-references, frontmatter carries metadata. A few
-conventions make the same content work well for humans *and* AI agents (the
-built-in chat, or any agent pointed at your docs repo):
+Memoria does not enforce any documentation structure — point it at any folder
+of files and it renders what it finds: folders become the nav tree, relative
+links become cross-references, frontmatter carries metadata. That said, if
+you're starting a knowledge base from scratch, these optional conventions make
+the same content work well for humans *and* AI agents (the built-in chat, or
+any agent pointed at your docs repo). The bundled `docs/` sample follows them;
+yours doesn't have to:
 
 - **Plain markdown in git is the format.** No proprietary silo: the same files
   are readable by people, diffable in PRs, greppable by agents, and portable to
