@@ -8,7 +8,7 @@ site — with **zero rebuild** between editing a doc and seeing it live.
 Edit a markdown file, reload the page, and the change is live — no build, no
 deploy:
 
-[▶ Watch the live-SSR demo](.github/demo-live-ssr.webm)
+![Live-SSR demo: edit a markdown file, reload, change is live](.github/demo-live-ssr.gif)
 
 ## TL;DR
 
