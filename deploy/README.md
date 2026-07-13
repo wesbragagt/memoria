@@ -22,18 +22,18 @@ The docs site is deployed as:
 
 ## Quick Start
 
-### 1. Create the Kubernetes Secret
-
-Replace placeholders in `k8s.yaml` Secret and create it:
+### 1. Create the namespace and fill in placeholders
 
 ```bash
 kubectl create namespace docs
-kubectl apply -f k8s.yaml -n docs
 ```
 
-**Critical secrets to set:**
-- `DOCS_GIT_REPO`: Git clone URL (with credentials for private repos)
-- `WEBHOOK_SECRET`: A strong, unique secret for HMAC verification
+Then edit `k8s.yaml` before applying — nothing works until the placeholders
+are replaced:
+
+- **`image:`** — your registry/image (see step 2)
+- **`DOCS_GIT_REPO`** (Secret): Git clone URL (with credentials for private repos)
+- **`WEBHOOK_SECRET`** (Secret): a strong, unique secret for HMAC verification
 
 ### 2. Build and push the container image
 
@@ -42,9 +42,10 @@ docker build -t myregistry.com/docs-site:latest .
 docker push myregistry.com/docs-site:latest
 ```
 
-Update the `image:` field in `k8s.yaml` with your registry/image.
+Use that same `myregistry.com/docs-site:latest` value for the `image:` field
+you edited in step 1.
 
-### 3. Create the Deployment and Service
+### 3. Apply the manifest (Secret, ConfigMap, Service, Deployment)
 
 ```bash
 kubectl apply -f k8s.yaml -n docs
@@ -121,7 +122,7 @@ curl https://docs.example.com/  # should redirect to your auth service
 |----------|---------|----------|---------|
 | `DOCS_GIT_REPO` | - | Yes | Git clone URL (e.g., `https://token@github.com/org/docs.git`) |
 | `DOCS_GIT_REF` | `main` | No | Branch/tag to track |
-| `DOCS_GIT_SUBTREE` | `.` | No | Path inside repo (e.g., `docs/` or `.`) |
+| `DOCS_GIT_SUBTREE` | `docs` | No | Path inside repo (e.g., `docs` or `.` for root); must match `DOCS_DIR` |
 | `REPO_DIR` | `/data/repo` | No | Where git-sync clones to (mounted from emptyDir) |
 | `DOCS_DIR` | `/data/repo/docs` | No | Where the server looks for `.md`/`.mdx`/`.html` files |
 | `WEBHOOK_SECRET` | - | Yes | HMAC-SHA256 secret for GitHub webhook verification |

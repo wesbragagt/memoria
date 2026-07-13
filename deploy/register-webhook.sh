@@ -109,5 +109,5 @@ echo "  1. Verify the webhook in GitHub: https://github.com/${REPO}/settings/hoo
 echo "  2. Push a change to the docs to trigger a sync:"
 echo "     git push origin <branch>"
 echo "  3. Check the Kubernetes pod logs for sync output:"
-echo "     kubectl logs -f deployment/docs-site -n default"
+echo "     kubectl logs -f deployment/docs-site -n docs"
 echo

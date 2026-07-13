@@ -42,7 +42,10 @@ metadata:
 data:
   # Place static config here if needed. Secrets (tokens, API keys) go in Secret.
   DOCS_GIT_REF: "main"
-  DOCS_GIT_SUBTREE: "."
+  # Subtree checked out from the repo. Must line up with DOCS_DIR below:
+  # subtree "docs" → checkout at REPO_DIR/docs → DOCS_DIR=/data/repo/docs.
+  # Use "." to serve the repo root (then set DOCS_DIR=/data/repo).
+  DOCS_GIT_SUBTREE: "docs"
 
 ---
 apiVersion: v1

@@ -17,19 +17,28 @@ site — with **zero rebuild** between editing a doc and seeing it live.
 - **Batteries included, nothing required.** Full-text search (no external
   service), ⌘K palette, dark mode, mermaid, callouts — and every optional
   feature turns off cleanly when unconfigured.
+- **Flexible, not lock-in.** Your content is just markdown in your git repo and
+  the site is driven by env vars — no proprietary format, no plugin API to
+  learn, no build pipeline to fight. It bends to how you already work and
+  evolves with your needs, instead of forcing your docs into one tool's fixed
+  behavior.
 
 ## Why use this?
 
 Most docs tooling (Docusaurus, VitePress, MkDocs…) compiles content at build
-time. That creates two costs that make docs rot:
+time. That creates three costs that make docs rot:
 
 - **Edit latency.** Every typo fix means rebuild → redeploy → wait. When
   publishing a change takes minutes of CI, people stop making small fixes.
 - **Coupling.** Content is baked into the artifact. Docs and deploys are welded
   together, so the team that writes docs depends on the team that ships code.
+- **Lock-in.** The structure, authoring model, and feature set are the tool's,
+  not yours. Adopting one is a commitment to its conventions; changing how your
+  docs work later means migrating off it, and leaving means an export-and-port
+  project.
 
 Memoria renders docs **at request time** and syncs them **from git at
-runtime**:
+runtime** — and stays deliberately un-opinionated about everything else:
 
 - Edit a file, refresh the page — the change is live. Locally *and* in
   production (a push to your docs repo refreshes content via webhook, no
@@ -41,6 +50,11 @@ runtime**:
 - Search, nav tree, dark mode, and recents/favorites work out of the box with
   no external services. AI "ask the docs" chat and live-data embeds are
   opt-in via a single env var each, and hide themselves when unconfigured.
+- Nothing about your setup is load-bearing on Memoria. It imposes no folder
+  layout, no metadata schema, no plugin system — so it evolves with your needs
+  (reorganize folders, adopt a convention, flip on a feature) rather than
+  locking you into one behavior. And because the content is just markdown in
+  git, leaving is a no-op: your files are already portable to any other tool.
 
 If your docs live next to your code and change often, this removes every step
 between "I noticed a mistake" and "it's fixed for everyone."
@@ -175,6 +189,8 @@ Everything is env vars; every feature degrades cleanly when unset. Copy
 | `OPENROUTER_API_KEY` | unset | "Ask the docs" AI chat (unset → trigger hidden) |
 | `DOCS_AI_MODEL` | `anthropic/claude-3.5-haiku` | Chat model slug |
 | `QUERY_ENGINE_URL` | unset | Live-data SQL embeds (unset → embeds report unavailable) |
+| `QUERY_MAX_ROWS` | `200` | Row cap per SQL embed |
+| `QUERY_TIMEOUT_MS` | `5000` | Per-query timeout for SQL embeds |
 | `HOST` / `PORT` | `0.0.0.0` / `4321` | Server bind |
 | `SHUTDOWN_GRACE_MS` | `10000` | Drain window on SIGTERM |
 

@@ -73,7 +73,7 @@ live, and the delivery log shows `200 {"synced":true}`.
 
 - **`401` on every delivery** — the secret on GitHub and `WEBHOOK_SECRET` on
   the site don't match. Update one; there is no partial match.
-- **`200 {"synced":false, "reason":"push to untracked ref"}`** — you pushed a
+- **`200 {"synced":false, "reason":"push to untracked ref: <ref>"}`** — you pushed a
   branch other than `DOCS_GIT_REF`. Push to the tracked branch or change the
   env var.
 - **Delivery times out** — the endpoint isn't publicly reachable from GitHub;

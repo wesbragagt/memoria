@@ -4,6 +4,8 @@ This knowledge base is organized by reader intent, following
 [Diátaxis](https://diataxis.fr). Start here to find the right kind of page —
 this index is the entry point for humans and agents alike.
 
+**New here?** Begin with the [Getting Started tutorial](tutorials/getting-started.md).
+
 ## Map
 
 - **tutorials/** — learning-oriented lessons.

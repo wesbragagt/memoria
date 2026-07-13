@@ -4,9 +4,11 @@
 # reload the page, the change is live. No env vars needed.
 #
 # For the production-like mode (content synced from a git repo at runtime),
-# set DOCS_GIT_REPO and WEBHOOK_SECRET in a .env file (see .env.example) and
-# comment out the volumes/DOCS_DIR lines below so the git checkout in /data
-# is used instead of the local mount.
+# set DOCS_GIT_REPO and WEBHOOK_SECRET in a .env file (see .env.example),
+# comment out the ./docs:/content mount and the `DOCS_DIR: /content` line
+# below, and instead set DOCS_DIR to the git checkout path
+# (REPO_DIR/DOCS_GIT_SUBTREE, e.g. /data/repo/docs). A commented
+# `DOCS_DIR: /data/repo/docs` line is provided below for that.
 
 services:
   docs:
@@ -21,6 +23,8 @@ services:
     environment:
       # Local mode: point at the mount. Remove for git-sync mode.
       DOCS_DIR: /content
+      # Git-sync mode: uncomment to serve the git checkout instead of the mount.
+      # DOCS_DIR: /data/repo/docs
       # Git-sync mode (all optional; empty = feature off):
       DOCS_GIT_REPO: ${DOCS_GIT_REPO:-}
       DOCS_GIT_REF: ${DOCS_GIT_REF:-main}
