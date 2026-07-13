@@ -134,11 +134,24 @@ yours doesn't have to:
   improves agent navigation; an [AGENTS.md](https://agents.md) in the docs repo
   can state the conventions themselves.
 
-Further reading: [Diátaxis](https://diataxis.fr) ·
+Commonly used documentation structures, any of which work here:
+
+- [Diátaxis](https://diataxis.fr) — four categories by reader intent
+  (tutorials, how-to, reference, explanation); the most widely adopted for
+  product/developer docs.
+- [The Documentation System (Divio)](https://docs.divio.com/documentation-system/)
+  — Diátaxis's predecessor, same quadrants with its own framing.
+- [The Good Docs Project](https://www.thegooddocsproject.dev) — ready-made
+  templates per doc type (README, tutorial, API reference, ADR…).
+- [Zettelkasten](https://zettelkasten.de/introduction/) — atomic,
+  densely-linked notes; structure emerges from links rather than folders.
+- [Johnny Decimal](https://johnnydecimal.com) — numbered categories
+  (`10-19 …`, `11.02 …`) for predictable, stable locations.
+- [arc42](https://arc42.org) — a fixed 12-section template for software
+  architecture documentation.
+
+Further reading: [Write the Docs: docs as code](https://www.writethedocs.org/guide/docs-as-code/) ·
 [llms.txt spec](https://llmstxt.org) ·
-[Zettelkasten introduction](https://zettelkasten.de/introduction/) ·
-[Johnny Decimal](https://johnnydecimal.com) ·
-[Write the Docs: docs as code](https://www.writethedocs.org/guide/docs-as-code/) ·
 [AGENTS.md](https://agents.md)
 
 ## Configuration
