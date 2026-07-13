@@ -65,4 +65,13 @@ const { nodes } = Astro.props;
     font-weight: 600;
     background: var(--active, #e0e7ff);
   }
+  /* Roomier tap targets for the primary mobile navigation. */
+  @media (max-width: 720px) {
+    .tree {
+      line-height: 1.5;
+    }
+    .tree-link {
+      padding: 0.5rem 0.5rem;
+    }
+  }
 </style>

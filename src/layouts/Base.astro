@@ -307,6 +307,32 @@ const chatOn = chatConfigured();
       border-right: none;
       border-bottom: 1px solid var(--border);
     }
+    .content {
+      padding: 1.25rem 1.1rem;
+    }
+    .site-header {
+      flex-wrap: wrap;
+      padding: 0.6rem 1rem;
+      gap: 0.5rem;
+    }
+    /* ⌘K is meaningless without a keyboard; drop the hint but keep the
+       labelled, tappable Search button. */
+    .search-trigger kbd,
+    .palette-search kbd {
+      display: none;
+    }
+    .search-trigger,
+    .theme-toggle {
+      min-height: 40px;
+    }
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+    }
+    .code-copy {
+      min-height: 34px;
+      padding: 0.3rem 0.6rem;
+    }
   }
 
   /* Code blocks -------------------------------------------------------- */
@@ -505,6 +531,44 @@ const chatOn = chatConfigured();
   }
   blockquote[data-callout="caution"] .callout-header {
     color: var(--callout-caution);
+  }
+
+  /* Tables ------------------------------------------------------------- */
+  /* Markdown-authored tables and injected SQL-embed tables both scroll
+     horizontally within their own container so a wide table never forces
+     whole-page horizontal scroll on small screens. */
+  .doc-body table,
+  .sql-table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .doc-body table th,
+  .doc-body table td,
+  .sql-table th,
+  .sql-table td {
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  .doc-body table th,
+  .sql-table th {
+    background: var(--bg-subtle);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .sql-table-title {
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+  .sql-table-status,
+  .sql-table-truncated {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0.4rem 0;
   }
 
   /* Command palette ---------------------------------------------------- */

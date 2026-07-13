@@ -208,6 +208,8 @@ const CSS = `
 @media (max-width: 720px) {
   .chat-page { grid-template-columns: 1fr; height: auto; }
   .chat-threadlist { border-right: none; border-bottom: 1px solid var(--border); }
+  .chat-trigger, .chat-newbtn, .chat-closebtn, .chat-send { min-height: 40px; }
+  .chat-newbtn, .chat-closebtn { padding: 0.4rem 0.7rem; }
 }
 `;
 

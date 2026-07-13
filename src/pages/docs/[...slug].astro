@@ -140,6 +140,7 @@ const folderCrumbs = segments.slice(0, -1);
   }
   .doc-body {
     min-width: 0;
+    overflow-wrap: break-word;
   }
   .toc {
     position: sticky;
@@ -180,6 +181,16 @@ const folderCrumbs = segments.slice(0, -1);
     }
     .toc {
       display: none;
+    }
+    .breadcrumbs {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .fav-btn {
+      font-size: 1.25rem;
+      min-width: 40px;
+      min-height: 40px;
     }
   }
 </style>
