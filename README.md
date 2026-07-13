@@ -3,6 +3,13 @@
 Turn a folder of markdown into a searchable, live, optionally AI-queryable docs
 site — with **zero rebuild** between editing a doc and seeing it live.
 
+## Demo
+
+Edit a markdown file, reload the page, and the change is live — no build, no
+deploy:
+
+[▶ Watch the live-SSR demo](.github/demo-live-ssr.webm)
+
 ## TL;DR
 
 - **Zero-build.** Docs render at request time — edit a file, refresh, it's
